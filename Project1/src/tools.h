@@ -33,8 +33,6 @@ public:
 
   VectorXd polar_to_cart(const VectorXd& polar);
 
-  float normalize_theta(float theta);
-
 };
 
 #endif /* TOOLS_H_ */
