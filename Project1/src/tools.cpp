@@ -45,40 +45,37 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state)
 {
   MatrixXd Hj(3,4);
 	//recover state parameters
-	double x = x_state(0);
-	double y = x_state(1);
-	double x_dot = x_state(2);
-	double y_dot = x_state(3);
+	float x = x_state(0);
+	float y = x_state(1);
+	float x_dot = x_state(2);
+	float y_dot = x_state(3);
 
-  double x2 = x * x;
-  double y2 = y * y;
+  float x2 = x * x;
+  float y2 = y * y;
 
   //pre-compute a set of terms to avoid repeated calculation
-	double c1 = x2 + y2;
+	float c1 = x2 + y2;
 
-  double epsilon = .0001;
+  float epsilon = .0001;
   if (fabs(c1) < epsilon)
   {
     c1 = epsilon;
   }
 
-	double c2 = sqrt(c1);
+	float c2 = sqrt(c1);
   if (fabs(c2) < epsilon)
   {
     c2 = epsilon;
   }
 
-	double c3 = (c1*c2);
+	float c3 = (c1*c2);
   if (fabs(c3) < epsilon)
   {
     c3 = epsilon;
   }
 
   //compute the Jacobian matrix
-	Hj << (x/c2), (y/c2), 0, 0,
-		    -(y/c1), (x/c1), 0, 0,
-		    y*(x_dot*y - y_dot*x)/c3, x*(x*y_dot - y*x_dot)/c3, x/c2, y/c2;
-  /*Hj(0,0) = x/c2;
+  Hj(0,0) = x/c2;
   Hj(0,1) = y/c2;
   Hj(0,2) = 0;
   Hj(0,3) = 0;
@@ -91,21 +88,22 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state)
   Hj(2,0) = y*(x_dot*y - y_dot*x)/c3;
   Hj(2,1) = x*(x*y_dot - y*x_dot)/c3;
   Hj(2,2) = x/c2;
-  Hj(2,3) = y/c2;*/
+  Hj(2,3) = y/c2;
 
 	return Hj;
 }
 
 VectorXd Tools::cart_to_polar(const VectorXd& cart)
 {
+  //printf("here\n");
   VectorXd polar(3);
 
-  double x = cart(0);
-  double y = cart(1);
-  double x_dot = cart(2);
-  double y_dot = cart(3);
+  float x = cart(0);
+  float y = cart(1);
+  float x_dot = cart(2);
+  float y_dot = cart(3);
 
-  double epsilon = .0001;
+  float epsilon = .0001;
   if (fabs(x) < epsilon) {
       x = epsilon;
   }
@@ -113,15 +111,15 @@ VectorXd Tools::cart_to_polar(const VectorXd& cart)
       x_dot = epsilon;
   }
 
-  double rho = sqrt(x*x + y*y);
+  float rho = sqrt(x*x + y*y);
 
   if (fabs(rho) < epsilon)
   {
       rho = epsilon;
   }
 
-  double theta = atan2(y, x);
-  double rho_dot = (x*x_dot + y*y_dot) / rho;
+  float theta = atan2(y, x);
+  float rho_dot = (x*x_dot + y*y_dot) / rho;
 
   polar << rho, theta, rho_dot;
 
@@ -132,14 +130,14 @@ VectorXd Tools::polar_to_cart(const VectorXd& polar)
 {
   VectorXd cart(4);
 
-  double rho = polar(0);
-  double theta = polar(1);
-  double rho_dot = polar(2);
+  float rho = polar(0);
+  float theta = polar(1);
+  float rho_dot = polar(2);
 
-  double x = rho * cos(theta);
-  double y = rho * sin(theta);
-  double x_dot = rho_dot * cos(theta);
-  double y_dot = rho_dot * sin(theta);
+  float x = rho * cos(theta);
+  float y = rho * sin(theta);
+  float x_dot = rho_dot * cos(theta);
+  float y_dot = rho_dot * sin(theta);
 
   cart << x, y, x_dot, y_dot;
 

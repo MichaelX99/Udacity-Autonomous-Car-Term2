@@ -10,14 +10,18 @@ KalmanFilter::KalmanFilter()
   x_ = VectorXd(4);
 
   F_ = MatrixXd(4, 4);
-  F_ << 1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1;
+  F_ << 1, 0, 1, 0,
+        0, 1, 0, 1,
+        0, 0, 1, 0,
+        0, 0, 0, 1;
 
   Q_ = MatrixXd(4, 4);
 
   P_ = MatrixXd(4, 4);
+  P_ << 1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1000, 0,
+        0, 0, 0, 1000;
 }
 
 KalmanFilter::~KalmanFilter() {}
@@ -55,7 +59,7 @@ void KalmanFilter::UpdateKF(const VectorXd &z)
 
 void KalmanFilter::UpdateEKF(const VectorXd &z)
 {
-
+//std::cout << "wut" << std::endl;
   VectorXd y = z - tools.cart_to_polar(x_);
 
   if (fabs(y(1)) > 3.14)
