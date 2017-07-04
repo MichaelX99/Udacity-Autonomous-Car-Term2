@@ -17,12 +17,6 @@ public:
   ///* initially set to false, set to true in first call of ProcessMeasurement
   bool is_initialized_;
 
-  ///* if this is false, laser measurements will be ignored (except for init)
-  bool use_laser_;
-
-  ///* if this is false, radar measurements will be ignored (except for init)
-  bool use_radar_;
-
   ///* state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   VectorXd x_;
 
@@ -68,8 +62,9 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
-  Tools tools;
+  double dt_;
 
+  Tools tools;
 
   /**
    * Constructor
@@ -80,6 +75,10 @@ public:
    * Destructor
    */
   virtual ~UKF();
+
+  MatrixXd ComputeSigmaPoints();
+
+  void PredictSigmaPoints(MatrixXd Xsig_aug);
 
   /**
    * ProcessMeasurement
@@ -92,7 +91,7 @@ public:
    * matrix
    * @param delta_t Time between k and k+1 in s
    */
-  void Prediction(double delta_t);
+  void Prediction();
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement

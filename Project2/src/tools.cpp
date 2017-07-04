@@ -61,3 +61,18 @@ double Tools::ComputeNIS()
 
   return NIS;
 }
+
+double Tools::AngleNormalization(double angle)
+{
+  double out;
+  if (fabs(angle) > 3.14)
+  {
+    out = atan2(sin(angle), cos(angle));
+  }
+  else
+  {
+    out = angle;
+  }
+
+  return out;
+}

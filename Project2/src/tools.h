@@ -28,6 +28,8 @@ public:
 
   double ComputeNIS();
 
+  double AngleNormalization(double angle);
+
 };
 
 #endif /* TOOLS_H_ */
