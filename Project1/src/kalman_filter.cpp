@@ -59,7 +59,6 @@ void KalmanFilter::UpdateKF(const VectorXd &z)
 
 void KalmanFilter::UpdateEKF(const VectorXd &z)
 {
-//std::cout << "wut" << std::endl;
   VectorXd y = z - tools.cart_to_polar(x_);
 
   if (fabs(y(1)) > 3.14)

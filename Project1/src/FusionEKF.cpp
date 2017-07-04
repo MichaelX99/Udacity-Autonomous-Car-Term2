@@ -106,10 +106,25 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack)
   noise_ax = noise_ay = 9.0;
 
 	//set the process covariance matrix Q
-	ekf_.Q_ <<  dt_4/4*noise_ax, 0, dt_3/2*noise_ax, 0,
-			        0, dt_4/4*noise_ay, 0, dt_3/2*noise_ay,
-			        dt_3/2*noise_ax, 0, dt_2*noise_ax, 0,
-			        0, dt_3/2*noise_ay, 0, dt_2*noise_ay;
+  ekf_.Q_(0,0) = dt_4/4*noise_ax;
+  ekf_.Q_(0,1) = 0;
+  ekf_.Q_(0,2) = dt_3/2*noise_ax;
+  ekf_.Q_(0,3) = 0;
+
+  ekf_.Q_(1,0) = 0;
+  ekf_.Q_(1,1) = dt_4/4*noise_ay;
+  ekf_.Q_(1,2) = 0;
+  ekf_.Q_(1,3) = dt_3/2*noise_ay;
+
+  ekf_.Q_(2,0) = dt_3/2*noise_ax;
+  ekf_.Q_(2,1) = 0;
+  ekf_.Q_(2,2) = dt_2*noise_ax;
+  ekf_.Q_(2,3) = 0;
+
+  ekf_.Q_(3,0) = 0;
+  ekf_.Q_(3,1) = dt_3/2*noise_ax;
+  ekf_.Q_(3,2) = 0;
+  ekf_.Q_(3,3) = dt_2*noise_ay;
 
   ekf_.Predict();
 
@@ -131,8 +146,4 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack)
 	  ekf_.R_ = R_laser_;
 	  ekf_.UpdateKF(measurement_pack.raw_measurements_);
   }
-
-  // print the output
-  //cout << "x_ = " << ekf_.x_ << endl;
-  //cout << "P_ = " << ekf_.P_ << endl;
 }
