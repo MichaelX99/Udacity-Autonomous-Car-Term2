@@ -66,6 +66,8 @@ public:
 
   Tools tools;
 
+  int n_radar_;
+
   /**
    * Constructor
    */
@@ -79,6 +81,8 @@ public:
   MatrixXd ComputeSigmaPoints();
 
   void PredictSigmaPoints(MatrixXd Xsig_aug);
+
+  MatrixXd SigmaToRADAR();
 
   /**
    * ProcessMeasurement

@@ -62,6 +62,8 @@ UKF::UKF()
     double weight = 0.5/(n_aug_+lambda_);
     weights_(i+1) = weight;
   }
+
+  n_radar_ = 3;
 }
 
 UKF::~UKF() {}
@@ -189,6 +191,43 @@ void UKF::PredictSigmaPoints(MatrixXd Xsig_aug)
   }
 }
 
+MatrixXd UKF::SigmaToRADAR()
+{
+  //create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd(n_radar_, 2 * n_aug_ + 1);
+
+  //transform sigma points into measurement space
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
+
+    // extract values for better readibility
+    double p_x = Xsig_pred_(0,i);
+    double p_y = Xsig_pred_(1,i);
+    double v  = Xsig_pred_(2,i);
+    double yaw = Xsig_pred_(3,i);
+
+    double v1 = cos(yaw)*v;
+    double v2 = sin(yaw)*v;
+
+    if (fabs(p_x) < .001)
+    {
+      p_x = .001;
+    }
+
+    // measurement model
+    Zsig(0,i) = sqrt(p_x*p_x + p_y*p_y);                        //r
+
+    if (fabs(Zsig(0,i)) < .001)
+    {
+      Zsig(0,i) = .001;
+    }
+
+    Zsig(1,i) = atan2(p_y,p_x);                                 //phi
+    Zsig(2,i) = (p_x*v1 + p_y*v2 ) / Zsig(0,i);   //r_dot
+  }
+
+  return Zsig;
+}
+
 /**
  * Predicts sigma points, the state, and the state covariance matrix.
  * @param {double} dt_ the change in time (in seconds) between the last
@@ -253,4 +292,67 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   You'll also need to calculate the radar NIS.
   */
 
+  // Move Sigma Points to Measurement space
+  MatrixXd Zsig = SigmaToRADAR();
+
+
+  //mean predicted measurement
+  VectorXd z_pred = VectorXd(n_radar_);
+  z_pred.fill(0.0);
+  for (int i=0; i < 2*n_aug_+1; i++) {
+      z_pred = z_pred + weights_(i) * Zsig.col(i);
+  }
+
+  //measurement covariance matrix S
+  MatrixXd S = MatrixXd(n_radar_,n_radar_);
+  S.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
+    //residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    //angle normalization
+    z_diff(1) = tools.AngleNormalization(z_diff(1));
+
+    S = S + weights_(i) * z_diff * z_diff.transpose();
+  }
+
+  //add measurement noise covariance matrix
+  MatrixXd R = MatrixXd(n_radar_,n_radar_);
+  R <<    std_radr_*std_radr_, 0, 0,
+          0, std_radphi_*std_radphi_, 0,
+          0, 0,std_radrd_*std_radrd_;
+  S = S + R;
+
+  //create matrix for cross correlation Tc
+  MatrixXd Tc = MatrixXd(n_x_, n_radar_);
+
+  //calculate cross correlation matrix
+  Tc.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
+
+    //residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+    //angle normalization
+    z_diff(1) = tools.AngleNormalization(z_diff(1));
+
+    // state difference
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    //angle normalization
+    x_diff(3) = tools.AngleNormalization(x_diff(3));
+
+    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
+  }
+
+  //Kalman gain K;
+  MatrixXd K = Tc * S.inverse();
+
+  //residual
+  VectorXd z_diff = meas_package.raw_measurements_ - z_pred;
+
+  //angle normalization
+  z_diff(1) = tools.AngleNormalization(z_diff(1));
+
+  //update state mean and covariance matrix
+  x_ = x_ + K * z_diff;
+  P_ = P_ - K*S*K.transpose();
 }
