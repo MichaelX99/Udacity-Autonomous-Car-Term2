@@ -64,6 +64,7 @@ UKF::UKF()
   }
 
   n_radar_ = 3;
+  n_lidar_ = 2;
 }
 
 UKF::~UKF() {}
@@ -228,6 +229,108 @@ MatrixXd UKF::SigmaToRADAR()
   return Zsig;
 }
 
+MatrixXd UKF::SigmaToLIDAR()
+{
+  //create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd(n_lidar_, 2 * n_aug_ + 1);
+
+  return Zsig;
+}
+
+VectorXd UKF::MeasurementPredict(MeasurementPackage::SensorType type, MatrixXd Zsig)
+{
+  //mean predicted measurement
+  VectorXd z_pred;
+  if (type == MeasurementPackage::LASER)
+  {
+    z_pred = VectorXd(n_lidar_);
+  }
+  else if (type == MeasurementPackage::RADAR)
+  {
+    z_pred = VectorXd(n_radar_);
+  }
+  z_pred.fill(0.0);
+  for (int i=0; i < 2*n_aug_+1; i++) {
+      z_pred = z_pred + weights_(i) * Zsig.col(i);
+  }
+
+  return z_pred;
+}
+
+MatrixXd UKF::ComputeMeasurementCovariance(MeasurementPackage::SensorType type, MatrixXd Zsig, VectorXd z_pred)
+{
+  MatrixXd S;
+  if (type == MeasurementPackage::LASER)
+  {
+    S = MatrixXd(n_lidar_, n_lidar_);
+  }
+  else if (type == MeasurementPackage::RADAR)
+  {
+    S = MatrixXd(n_radar_, n_radar_);
+  }
+  S.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++)
+  {  //2n+1 simga points
+    //residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    //angle normalization
+    z_diff(1) = tools.AngleNormalization(z_diff(1));
+
+    S = S + weights_(i) * z_diff * z_diff.transpose();
+  }
+
+  return S;
+}
+
+MatrixXd UKF::ComputeCrossCorrelation(MeasurementPackage::SensorType type, MatrixXd Zsig, VectorXd z_pred)
+{
+  MatrixXd Tc;
+  if (type == MeasurementPackage::LASER)
+  {
+    Tc = MatrixXd(n_x_, n_lidar_);
+  }
+  else if (type == MeasurementPackage::RADAR)
+  {
+    Tc = MatrixXd(n_x_, n_radar_);
+  }
+  Tc.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++)
+  {  //2n+1 simga points
+
+    //residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+    //angle normalization
+    z_diff(1) = tools.AngleNormalization(z_diff(1));
+
+    // state difference
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    //angle normalization
+    x_diff(3) = tools.AngleNormalization(x_diff(3));
+
+    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
+  }
+
+  return Tc;
+}
+
+void UKF::MeasurementStateUpdate(VectorXd measurement, MatrixXd Tc, MatrixXd S, VectorXd z_pred)
+{
+  //Kalman gain K;
+  MatrixXd K = Tc * S.inverse();
+
+  //residual
+  VectorXd z_diff = measurement - z_pred;
+
+  //angle normalization
+  z_diff(1) = tools.AngleNormalization(z_diff(1));
+
+  //update state mean and covariance matrix
+  x_ = x_ + K * z_diff;
+  P_ = P_ - K*S*K.transpose();
+}
+
+
 /**
  * Predicts sigma points, the state, and the state covariance matrix.
  * @param {double} dt_ the change in time (in seconds) between the last
@@ -266,7 +369,8 @@ void UKF::Prediction()
  * Updates the state and the state covariance matrix using a laser measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateLidar(MeasurementPackage meas_package) {
+void UKF::UpdateLidar(MeasurementPackage meas_package)
+{
   /**
   TODO:
 
@@ -276,45 +380,41 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   You'll also need to calculate the lidar NIS.
   */
 
+  // Move Sigma Points to Measurement space
+  MatrixXd Zsig = SigmaToLIDAR();
+
+  //mean predicted measurement
+  VectorXd z_pred = MeasurementPredict(meas_package.sensor_type_, Zsig);
+
+  //measurement covariance matrix S
+  MatrixXd S = ComputeMeasurementCovariance(meas_package.sensor_type_, Zsig, z_pred);
+
+  //add measurement noise covariance matrix
+  MatrixXd R = MatrixXd(n_lidar_,n_lidar_);
+  R <<    std_laspx_*std_laspx_, 0,
+          0, std_laspy_*std_laspy_;
+  S = S + R;
+
+  //create matrix for cross correlation Tc
+  MatrixXd Tc = ComputeCrossCorrelation(meas_package.sensor_type_, Zsig, z_pred);
+
+  MeasurementStateUpdate(meas_package.raw_measurements_, Tc, S, z_pred);
 }
 
 /**
  * Updates the state and the state covariance matrix using a radar measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateRadar(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Use radar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
-
-  You'll also need to calculate the radar NIS.
-  */
-
+void UKF::UpdateRadar(MeasurementPackage meas_package)
+{
   // Move Sigma Points to Measurement space
   MatrixXd Zsig = SigmaToRADAR();
 
-
   //mean predicted measurement
-  VectorXd z_pred = VectorXd(n_radar_);
-  z_pred.fill(0.0);
-  for (int i=0; i < 2*n_aug_+1; i++) {
-      z_pred = z_pred + weights_(i) * Zsig.col(i);
-  }
+  VectorXd z_pred = MeasurementPredict(meas_package.sensor_type_, Zsig);
 
   //measurement covariance matrix S
-  MatrixXd S = MatrixXd(n_radar_,n_radar_);
-  S.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
-    //residual
-    VectorXd z_diff = Zsig.col(i) - z_pred;
-
-    //angle normalization
-    z_diff(1) = tools.AngleNormalization(z_diff(1));
-
-    S = S + weights_(i) * z_diff * z_diff.transpose();
-  }
+  MatrixXd S = ComputeMeasurementCovariance(meas_package.sensor_type_, Zsig, z_pred);
 
   //add measurement noise covariance matrix
   MatrixXd R = MatrixXd(n_radar_,n_radar_);
@@ -324,35 +424,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   S = S + R;
 
   //create matrix for cross correlation Tc
-  MatrixXd Tc = MatrixXd(n_x_, n_radar_);
+  MatrixXd Tc = ComputeCrossCorrelation(meas_package.sensor_type_, Zsig, z_pred);
 
-  //calculate cross correlation matrix
-  Tc.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
-
-    //residual
-    VectorXd z_diff = Zsig.col(i) - z_pred;
-    //angle normalization
-    z_diff(1) = tools.AngleNormalization(z_diff(1));
-
-    // state difference
-    VectorXd x_diff = Xsig_pred_.col(i) - x_;
-    //angle normalization
-    x_diff(3) = tools.AngleNormalization(x_diff(3));
-
-    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
-  }
-
-  //Kalman gain K;
-  MatrixXd K = Tc * S.inverse();
-
-  //residual
-  VectorXd z_diff = meas_package.raw_measurements_ - z_pred;
-
-  //angle normalization
-  z_diff(1) = tools.AngleNormalization(z_diff(1));
-
-  //update state mean and covariance matrix
-  x_ = x_ + K * z_diff;
-  P_ = P_ - K*S*K.transpose();
+  MeasurementStateUpdate(meas_package.raw_measurements_, Tc, S, z_pred);
 }

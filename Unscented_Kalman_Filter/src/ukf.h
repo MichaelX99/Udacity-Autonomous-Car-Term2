@@ -68,6 +68,8 @@ public:
 
   int n_radar_;
 
+  int n_lidar_;
+
   /**
    * Constructor
    */
@@ -83,6 +85,17 @@ public:
   void PredictSigmaPoints(MatrixXd Xsig_aug);
 
   MatrixXd SigmaToRADAR();
+
+  MatrixXd SigmaToLIDAR();
+
+  VectorXd MeasurementPredict(MeasurementPackage::SensorType type, MatrixXd Zsig);
+
+  MatrixXd ComputeMeasurementCovariance(MeasurementPackage::SensorType type, MatrixXd Zsig, VectorXd z_pred);
+
+  MatrixXd ComputeCrossCorrelation(MeasurementPackage::SensorType type, MatrixXd Zsig, VectorXd z_pred);
+
+  void MeasurementStateUpdate(VectorXd measurement, MatrixXd Tc, MatrixXd S, VectorXd z_pred);
+
 
   /**
    * ProcessMeasurement
