@@ -70,6 +70,8 @@ public:
 
   int n_lidar_;
 
+  double NIS_;
+
   /**
    * Constructor
    */
